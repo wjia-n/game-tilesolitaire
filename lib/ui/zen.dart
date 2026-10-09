@@ -6,18 +6,26 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../theme/garden_themes.dart';
+
 class Zen {
-  static const sand = Color(0xFFE8DCC3);
-  static const sandGroove = Color(0xFFD2C2A3);
-  static const bambooIvory = Color(0xFFF5EFDD);
-  static const paperWhite = Color(0xFFFAF7F0);
-  static const sumiInk = Color(0xFF2B2620);
-  static const moss = Color(0xFF6B7F5E);
-  static const deepMoss = Color(0xFF4E6143);
-  static const cedar = Color(0xFF8C6D46);
-  static const darkCedar = Color(0xFF5A432A);
-  static const riverStone = Color(0xFF8A8D8F);
-  static const riverStoneDark = Color(0xFF6E7173);
+  // Colors delegate to the active garden theme (see theme/garden_themes.dart).
+  // Every widget reads these at build time, so switching themes and
+  // rebuilding repaints the whole app.
+  static Color get sand => GardenThemes.current.sand;
+  static Color get sandGroove => GardenThemes.current.sandGroove;
+  static Color get bambooIvory => GardenThemes.current.bambooIvory;
+  static Color get paperWhite => GardenThemes.current.paperWhite;
+  static Color get sumiInk => GardenThemes.current.sumiInk;
+  static Color get moss => GardenThemes.current.moss;
+  static Color get deepMoss => GardenThemes.current.deepMoss;
+  static Color get cedar => GardenThemes.current.cedar;
+  static Color get darkCedar => GardenThemes.current.darkCedar;
+  static Color get riverStone => GardenThemes.current.riverStone;
+  static Color get tray => GardenThemes.current.tray;
+  static Color get accent => GardenThemes.current.accent;
+  static Color get riverStoneDark =>
+      Color.lerp(GardenThemes.current.riverStone, const Color(0xFF000000), 0.18)!;
 
   /// Engraved-plaque heading: heavy, letterspaced, carved shadow.
   static TextStyle heading(double size) => TextStyle(
@@ -25,24 +33,25 @@ class Zen {
         fontWeight: FontWeight.w900,
         letterSpacing: 1.5,
         color: sumiInk,
-        shadows: const [
-          Shadow(offset: Offset(0, 1.5), color: paperWhite),
-          Shadow(offset: Offset(0, -1), color: Color(0x595A432A)),
+        shadows: [
+          Shadow(offset: const Offset(0, 1.5), color: paperWhite),
+          const Shadow(
+              offset: Offset(0, -1), color: Color(0x595A432A)),
         ],
       );
 
-  static const TextStyle body = TextStyle(
-    fontSize: 14,
-    height: 1.45,
-    color: sumiInk,
-  );
+  static TextStyle get body => TextStyle(
+        fontSize: 14,
+        height: 1.45,
+        color: sumiInk,
+      );
 
-  static const TextStyle chipLabel = TextStyle(
-    fontSize: 10,
-    fontWeight: FontWeight.w700,
-    letterSpacing: 1.6,
-    color: Color(0xFF8A7A5C),
-  );
+  static TextStyle get chipLabel => const TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.6,
+        color: Color(0xFF8A7A5C),
+      );
 
   static String clock(int seconds) {
     final m = seconds ~/ 60;
@@ -420,7 +429,7 @@ class _PebbleButtonState extends State<PebbleButton> {
                     ),
                     child: Text(
                       widget.badge!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Zen.paperWhite,
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
@@ -507,7 +516,7 @@ class GoStoneToggle extends StatelessWidget {
                           child: Container(
                             width: 8,
                             height: 8,
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: Zen.moss,
                             ),
@@ -654,7 +663,7 @@ class TallyChip extends StatelessWidget {
             const SizedBox(height: 1),
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
                 color: Zen.sumiInk,
@@ -736,7 +745,7 @@ class ToastBanner extends StatelessWidget {
           ),
           child: Text(
             message,
-            style: const TextStyle(
+            style: TextStyle(
               color: Zen.paperWhite,
               fontSize: 13,
               fontWeight: FontWeight.w600,

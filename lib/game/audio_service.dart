@@ -1,5 +1,12 @@
 // AudioService: plays procedurally generated sounds via audioplayers.
 // Music toggle / SFX toggle / volume sliders are all honored here.
+//
+// Reliability rules (exemplar pattern):
+// - All clips are synthesized once and cached.
+// - Music start/stop is serialized with a busy guard; never overlaps.
+// - pause()/resume() for app-lifecycle changes (never silently dies).
+// - prewarm() runs on the splash so menu music starts instantly.
+// - Audio must never crash the app: every call is guarded.
 import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayers.dart';
@@ -14,6 +21,7 @@ class AudioService {
   Uint8List? _menuMusic;
   Uint8List? _gameMusic;
   bool _ready = false;
+  bool _musicBusy = false;
   String? _musicMode; // 'menu' | 'game' | null
 
   bool musicEnabled = true;
@@ -24,17 +32,31 @@ class AudioService {
   /// Generate the small SFX buffers. Music loops are generated lazily on
   /// first use because they are larger.
   Future<void> init() async {
-    _sfxCache['tap'] = ZenSounds.tap();
-    _sfxCache['select'] = ZenSounds.select();
-    _sfxCache['match'] = ZenSounds.match();
-    _sfxCache['invalid'] = ZenSounds.invalid();
-    _sfxCache['shuffle'] = ZenSounds.shuffle();
-    _sfxCache['hint'] = ZenSounds.hint();
-    _sfxCache['undo'] = ZenSounds.undo();
-    _sfxCache['start'] = ZenSounds.gameStart();
-    _sfxCache['win'] = ZenSounds.win();
-    _sfxCache['lose'] = ZenSounds.lose();
-    _ready = true;
+    try {
+      _sfxCache['tap'] = ZenSounds.tap();
+      _sfxCache['select'] = ZenSounds.select();
+      _sfxCache['match'] = ZenSounds.match();
+      _sfxCache['invalid'] = ZenSounds.invalid();
+      _sfxCache['shuffle'] = ZenSounds.shuffle();
+      _sfxCache['hint'] = ZenSounds.hint();
+      _sfxCache['undo'] = ZenSounds.undo();
+      _sfxCache['start'] = ZenSounds.gameStart();
+      _sfxCache['win'] = ZenSounds.win();
+      _sfxCache['lose'] = ZenSounds.lose();
+      _ready = true;
+    } catch (_) {
+      _ready = false;
+    }
+  }
+
+  /// Pre-warm music buffers + players while the splash shows, so the first
+  /// startMenuMusic() call is instant.
+  Future<void> prewarm() async {
+    try {
+      _menuMusic ??= ZenSounds.musicMenu();
+      _gameMusic ??= ZenSounds.musicGame();
+      _musicPlayer ??= AudioPlayer();
+    } catch (_) {}
   }
 
   Future<void> playSfx(String name) async {
@@ -62,25 +84,53 @@ class AudioService {
   Future<void> startGameMusic() => _startMusic('game');
 
   Future<void> _startMusic(String mode) async {
-    if (!_ready) return;
-    _musicMode = mode;
-    if (!musicEnabled) return;
-    _menuMusic ??= ZenSounds.musicMenu();
-    _gameMusic ??= ZenSounds.musicGame();
-    _musicPlayer ??= AudioPlayer();
-    final player = _musicPlayer!;
+    if (!_ready || _musicBusy) return;
+    _musicBusy = true;
     try {
+      _musicMode = mode;
+      if (!musicEnabled) return;
+      _menuMusic ??= ZenSounds.musicMenu();
+      _gameMusic ??= ZenSounds.musicGame();
+      _musicPlayer ??= AudioPlayer();
+      final player = _musicPlayer!;
       await player.stop();
       await player.setReleaseMode(ReleaseMode.loop);
       await player.setVolume(musicVolume);
       await player.play(BytesSource(mode == 'menu' ? _menuMusic! : _gameMusic!));
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      _musicBusy = false;
+    }
   }
 
   Future<void> stopMusic() async {
     _musicMode = null;
     try {
       await _musicPlayer?.stop();
+    } catch (_) {}
+  }
+
+  /// Pause the music loop (app backgrounding). Keeps [_musicMode] so
+  /// resumeMusic() can bring it back.
+  Future<void> pauseMusic() async {
+    try {
+      await _musicPlayer?.pause();
+    } catch (_) {}
+  }
+
+  /// Resume after pauseMusic(), honoring the music toggle.
+  Future<void> resumeMusic() async {
+    final mode = _musicMode;
+    if (mode == null || !musicEnabled) return;
+    try {
+      final player = _musicPlayer;
+      if (player == null) return;
+      if (player.state == PlayerState.paused) {
+        await player.setVolume(musicVolume);
+        await player.resume();
+      } else {
+        await refreshMusic();
+      }
     } catch (_) {}
   }
 
@@ -93,8 +143,7 @@ class AudioService {
         await player.setVolume(0);
       } else {
         await player.setVolume(musicVolume);
-        if (_musicMode != null) {
-          // Resume playback if it was silenced by the toggle.
+        if (_musicMode != null && player.state == PlayerState.paused) {
           await player.resume();
         }
       }

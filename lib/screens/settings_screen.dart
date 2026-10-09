@@ -28,6 +28,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await audio.applySettings();
   }
 
+  void _editName() {
+    audio.playSfx('tap');
+    final ctl = TextEditingController(text: prefs.playerName);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Zen.paperWhite,
+        title: Text('Gardener name', style: Zen.heading(20)),
+        content: TextField(
+          controller: ctl,
+          maxLength: 18,
+          decoration: const InputDecoration(
+            hintText: 'What shall the garden call you?',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final name = ctl.text.trim();
+              if (name.isNotEmpty) {
+                prefs.playerName = name;
+                prefs.saveProfile();
+              }
+              audio.playSfx('tap');
+              Navigator.of(context).pop();
+              setState(() {});
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -58,6 +96,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
                 const SizedBox(height: 18),
+                CedarPlaque(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('GARDENER', style: Zen.chipLabel),
+                      const SizedBox(height: 8),
+                      _row(
+                        icon: Icons.person,
+                        title: prefs.playerName,
+                        subtitle: 'Tap to rename your gardener',
+                        control: PebbleButton(
+                          label: 'Rename',
+                          icon: Icons.edit,
+                          kind: PebbleKind.secondary,
+                          onTap: _editName,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
                 CedarPlaque(
                   child: Column(
                     children: [
@@ -132,7 +191,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       Text('THE GARDEN', style: Zen.chipLabel),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'Tile Solitaire by Wajiha.\n'
                         'Match every pair of tiles to clear the sand.\n'
                         'Flowers and seasons are wild and match each other.',
@@ -181,7 +240,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
                         color: Zen.sumiInk)),

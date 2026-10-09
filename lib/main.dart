@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 
 import 'game/audio_service.dart';
 import 'game/prefs.dart';
-import 'screens/menu_screen.dart';
+import 'services/iap_service.dart';
+import 'screens/splash_screen.dart';
+import 'theme/garden_themes.dart';
 import 'ui/zen.dart';
 
 Future<void> main() async {
@@ -24,14 +26,21 @@ Future<void> main() async {
   audio.sfxVolume = prefs.sfxVol;
   await audio.init();
 
-  runApp(TileSolitaireApp(audio: audio, prefs: prefs));
+  final store = StoreService();
+  await store.init();
+
+  runApp(TileSolitaireApp(audio: audio, prefs: prefs, store: store));
 }
 
 class TileSolitaireApp extends StatelessWidget {
   const TileSolitaireApp(
-      {super.key, required this.audio, required this.prefs});
+      {super.key,
+      required this.audio,
+      required this.prefs,
+      required this.store});
   final AudioService audio;
   final GamePrefs prefs;
+  final StoreService store;
 
   @override
   Widget build(BuildContext context) {
@@ -42,18 +51,19 @@ class TileSolitaireApp extends StatelessWidget {
         useMaterial3: true,
         scaffoldBackgroundColor: Zen.sand,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Zen.moss,
-          surface: Zen.paperWhite,
+          seedColor: GardenThemes.current.deepMoss,
+          surface: GardenThemes.current.paperWhite,
         ),
-        textTheme: const TextTheme(
+        textTheme: TextTheme(
           bodyMedium: Zen.body,
           bodyLarge: Zen.body,
         ),
         textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(foregroundColor: Zen.deepMoss),
+          style: TextButton.styleFrom(
+              foregroundColor: GardenThemes.current.deepMoss),
         ),
       ),
-      home: MenuScreen(audio: audio, prefs: prefs),
+      home: SplashScreen(audio: audio, prefs: prefs, store: store),
     );
   }
 }

@@ -5,6 +5,8 @@ import 'dart:convert';
 import 'dart:math';
 
 /// One tile face. 36 unique faces x 4 copies = 144 tiles.
+/// Glyphs here are canonical; the visible glyph comes from the active
+/// FaceStyle (ids 0-27 standard, 28-35 honor).
 class TileFace {
   const TileFace(this.id, this.glyph, this.label, {this.honor = false});
   final int id;
@@ -83,8 +85,8 @@ const List<LayoutDef> kLayouts = [
         '.XXXXXXXXXXXX.',
         '.XXXXXXXXXXXX.',
         '.XXXXXXXXXXXX.',
-        '.XXXXXXXXXXXXX',
         '.XXXXXXXXXXXX.',
+        '.XXXXXXXXXXXXX',
         'XXXXXXXXXXXX..',
         '.XXXXXXXXXXXX.',
         '.XXXXXXXXXXXX.',
@@ -171,7 +173,231 @@ const List<LayoutDef> kLayouts = [
       ]),
     ],
   ),
+  LayoutDef(
+    name: 'Zen Garden',
+    blurb: 'A raked pyramid at the heart of the sand.',
+    layers: [
+      LayoutLayer(1, 0, [
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+      ]),
+      LayoutLayer(4, 2, [
+        'XXXXXX',
+        'XXXXXX',
+        'XXXXXX',
+        'XXXXXX',
+      ]),
+      LayoutLayer(5, 3, [
+        'XXXX',
+        'XXXX',
+      ]),
+      LayoutLayer(5, 2, [
+        'XXXX',
+        'XXXX',
+        'XXXX',
+        'XXXX',
+      ]),
+    ],
+  ),
+  LayoutDef(
+    name: 'Lotus',
+    blurb: 'Petals open over still water.',
+    layers: [
+      LayoutLayer(0, 0, [
+        '.....XXXXXX.....',
+        '...XXXXXXXXXX...',
+        '..XXXXXXXXXXXX..',
+        '..XXXXXXXXXXXX..',
+        'XXXXXXXXXXXXXXXX',
+        'XXXXXXXXXXXXXXXX',
+        '..XXXXXXXXXXXX..',
+        '..XXXXXXXXXXXX..',
+        '...XXXXXXXXXX...',
+        '.....XXXXXX.....',
+      ]),
+      LayoutLayer(4, 3, [
+        'XXXXXXXX',
+        'XXXXXXXX',
+        'XXXXXXXX',
+        'XXXXXXXX',
+      ]),
+    ],
+  ),
+  LayoutDef(
+    name: 'Twin Peaks',
+    blurb: 'Two mountains, one quiet climb.',
+    layers: [
+      LayoutLayer(0, 0, [
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+      ]),
+      LayoutLayer(2, 2, [
+        'XXX...XXX',
+        'XXX...XXX',
+        'XXX...XXX',
+        'XXX...XXX',
+      ]),
+      LayoutLayer(3, 2, [
+        'XX...XX',
+        'XX...XX',
+        'XX...XX',
+        'XX...XX',
+      ]),
+      LayoutLayer(3, 2, [
+        'X.....X',
+        'X.....X',
+        'X.....X',
+        'X.....X',
+      ]),
+    ],
+  ),
+  LayoutDef(
+    name: 'Fortress',
+    blurb: 'Walls within walls, all the way down.',
+    layers: [
+      LayoutLayer(0, 0, [
+        'XXXXXXXXXXXX',
+        'X..........X',
+        'X..........X',
+        'X..........X',
+        'X..........X',
+        'X..........X',
+        'X..........X',
+        'X..........X',
+        'X..........X',
+        'X..........X',
+        'X..........X',
+        'XXXXXXXXXXXX',
+      ]),
+      LayoutLayer(1, 1, [
+        'XXXXXXXXXX',
+        'X........X',
+        'X........X',
+        'X........X',
+        'X........X',
+        'X........X',
+        'X........X',
+        'X........X',
+        'X........X',
+        'XXXXXXXXXX',
+      ]),
+      LayoutLayer(2, 2, [
+        'XXXXXXXX',
+        'X......X',
+        'X......X',
+        'X......X',
+        'X......X',
+        'X......X',
+        'X......X',
+        'XXXXXXXX',
+      ]),
+      LayoutLayer(3, 3, [
+        'XXXXXX',
+        'X....X',
+        'X....X',
+        'X....X',
+        'X....X',
+        'XXXXXX',
+      ]),
+      LayoutLayer(4, 4, [
+        'XXXX',
+        'X..X',
+        'X..X',
+        'XXXX',
+      ]),
+      LayoutLayer(5, 5, [
+        'XX',
+        'XX',
+      ]),
+    ],
+  ),
+  LayoutDef(
+    name: 'Mesa',
+    blurb: 'A flat-topped rock above the desert.',
+    layers: [
+      LayoutLayer(0, 0, [
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+        'XXXXXXXXXXXX',
+      ]),
+      LayoutLayer(2, 1, [
+        'XXXXXXXX',
+        'XXXXXXXX',
+        'XXXXXXXX',
+        'XXXXXXXX',
+        'XXXXXXXX',
+        'XXXXXXXX',
+      ]),
+    ],
+  ),
+  LayoutDef(
+    name: 'River Bend',
+    blurb: 'Follow the water around the bend.',
+    layers: [
+      LayoutLayer(0, 0, [
+        'XXXXXXXXXXXXXXXX',
+        'XXXXXXXXXXXXXXXX',
+        '..........XXXXXX',
+        '..........XXXXXX',
+        'XXXXXXXXXXXXXXXX',
+        'XXXXXXXXXXXXXXXX',
+        'XXXXXX..........',
+        'XXXXXX..........',
+        'XXXXXXXXXXXXXXXX',
+        'XXXXXXXXXXXXXXXX',
+      ]),
+      LayoutLayer(2, 0, [
+        'XXXXXX',
+        'XXXXXX',
+        'XXXXXX',
+        'XXXXXX',
+      ]),
+    ],
+  ),
 ];
+
+/// Difficulty sets the starting assist tokens per game.
+enum Difficulty { gentle, classic, ascetic }
+
+extension DifficultyInfo on Difficulty {
+  int get hints => switch (this) {
+        Difficulty.gentle => 6,
+        Difficulty.classic => 3,
+        Difficulty.ascetic => 1,
+      };
+  int get shuffles => switch (this) {
+        Difficulty.gentle => 6,
+        Difficulty.classic => 3,
+        Difficulty.ascetic => 1,
+      };
+  String get title => switch (this) {
+        Difficulty.gentle => 'Gentle',
+        Difficulty.classic => 'Classic',
+        Difficulty.ascetic => 'Ascetic',
+      };
+  String get blurb => switch (this) {
+        Difficulty.gentle => 'A calm stroll: 6 hints, 6 shuffles.',
+        Difficulty.classic => 'The true garden: 3 hints, 3 shuffles.',
+        Difficulty.ascetic => 'Pure focus: 1 hint, 1 shuffle.',
+      };
+}
 
 class Tile {
   Tile({
@@ -223,22 +449,27 @@ class CaptureRecord {
 enum TapEvent { invalidTile, selected, deselected, mismatch, captured }
 
 class TileSolitaireEngine {
-  TileSolitaireEngine._({required this.tiles, required this.layoutIndex});
+  TileSolitaireEngine._({
+    required this.tiles,
+    required this.layoutIndex,
+    required this.difficulty,
+  });
 
   static const int parTimeSeconds = 300;
   static const bool honorTilesMatchAny = true;
-  static const int startingHints = 3;
-  static const int startingShuffles = 3;
   static const int dealAttempts = 100;
   static const int shuffleAttempts = 50;
 
   final List<Tile> tiles;
   int layoutIndex;
+  Difficulty difficulty;
   int? selectedId;
   int score = 0;
   int chain = 0;
-  int hintsLeft = startingHints;
-  int shufflesLeft = startingShuffles;
+  int hintBonus = 0;
+  int shuffleBonus = 0;
+  late int hintsLeft;
+  late int shufflesLeft;
   int hintsUsed = 0;
   int shufflesUsed = 0;
   int moves = 0;
@@ -251,7 +482,13 @@ class TileSolitaireEngine {
   bool resigned = false;
   int winBonus = 0;
 
-  factory TileSolitaireEngine.newGame({required int layoutIndex, int? seed}) {
+  factory TileSolitaireEngine.newGame({
+    required int layoutIndex,
+    Difficulty difficulty = Difficulty.classic,
+    int? seed,
+    int hintBonus = 0,
+    int shuffleBonus = 0,
+  }) {
     final def = kLayouts[layoutIndex];
     final tiles = <Tile>[];
     var id = 0;
@@ -268,7 +505,15 @@ class TileSolitaireEngine {
       }
     }
     assert(tiles.length == 144, 'layout must deal exactly 144 tiles');
-    final engine = TileSolitaireEngine._(tiles: tiles, layoutIndex: layoutIndex);
+    final engine = TileSolitaireEngine._(
+      tiles: tiles,
+      layoutIndex: layoutIndex,
+      difficulty: difficulty,
+    );
+    engine.hintsLeft = difficulty.hints + hintBonus;
+    engine.shufflesLeft = difficulty.shuffles + shuffleBonus;
+    engine.hintBonus = hintBonus;
+    engine.shuffleBonus = shuffleBonus;
     engine._deal(Random(seed ?? DateTime.now().microsecondsSinceEpoch));
     return engine;
   }
@@ -379,7 +624,8 @@ class TileSolitaireEngine {
     final t = tiles[tileId];
     if (t.cleared) return TapEvent.invalidTile;
     if (!isFree(t)) {
-      chain = 0;
+      // Per RULES §8 the chain only breaks on a deselect or a miss
+      // (illegal second selection); a tap on a non-free tile is neither.
       return TapEvent.invalidTile;
     }
     if (selectedId == null) {
@@ -493,14 +739,17 @@ class TileSolitaireEngine {
   }
 
   Map<String, dynamic> toJson() => {
-        'v': 1,
+        'v': 2,
         'layout': layoutIndex,
+        'diff': difficulty.index,
         'tiles': [
           for (final t in tiles) [t.x, t.y, t.z, t.face, t.cleared ? 1 : 0]
         ],
         'sel': selectedId,
         'score': score,
         'chain': chain,
+        'hintBonus': hintBonus,
+        'shuffleBonus': shuffleBonus,
         'hintsLeft': hintsLeft,
         'shufflesLeft': shufflesLeft,
         'hintsUsed': hintsUsed,
@@ -525,13 +774,18 @@ class TileSolitaireEngine {
       t.cleared = (r[4] as int) == 1;
       tiles.add(t);
     }
+    final diffIdx = j['diff'] as int? ?? Difficulty.classic.index;
+    final diff = Difficulty.values[
+        diffIdx.clamp(0, Difficulty.values.length - 1)];
     final e = TileSolitaireEngine._(
-        tiles: tiles, layoutIndex: j['layout'] as int? ?? 0);
+        tiles: tiles, layoutIndex: j['layout'] as int? ?? 0, difficulty: diff);
     e.selectedId = j['sel'] as int?;
     e.score = j['score'] as int? ?? 0;
     e.chain = j['chain'] as int? ?? 0;
-    e.hintsLeft = j['hintsLeft'] as int? ?? startingHints;
-    e.shufflesLeft = j['shufflesLeft'] as int? ?? startingShuffles;
+    e.hintBonus = j['hintBonus'] as int? ?? 0;
+    e.shuffleBonus = j['shuffleBonus'] as int? ?? 0;
+    e.hintsLeft = j['hintsLeft'] as int? ?? diff.hints;
+    e.shufflesLeft = j['shufflesLeft'] as int? ?? diff.shuffles;
     e.hintsUsed = j['hintsUsed'] as int? ?? 0;
     e.shufflesUsed = j['shufflesUsed'] as int? ?? 0;
     e.moves = j['moves'] as int? ?? 0;

@@ -1,5 +1,6 @@
 // GameController: bridges the pure-Dart engine with the Flutter UI.
-// Owns the clock, animations locks, toasts, pause/resume and persistence.
+// Owns the clock, animation locks, toasts, pause/resume, persistence,
+// and the watchdog that guarantees no stuck states.
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -10,6 +11,10 @@ import 'prefs.dart';
 
 enum PlayPhase { playing, paused, won, lost }
 
+/// The engine (not UI timers) owns all game state. The controller only
+/// bridges to Flutter. A watchdog recovers the input lock if any async
+/// animation callback ever fails to release it — stuck states are
+/// impossible by construction.
 class GameController extends ChangeNotifier {
   GameController({required this.audio, required this.prefs});
 
@@ -19,8 +24,9 @@ class GameController extends ChangeNotifier {
   late TileSolitaireEngine engine;
   PlayPhase phase = PlayPhase.playing;
 
-  /// Input lock while the removal animation settles (~250 ms).
+  /// Input lock while the removal/shuffle animation settles.
   bool busy = false;
+  bool shuffling = false;
   Set<int> popping = {};
   List<int> hintIds = [];
   int hintFlashSeq = 0;
@@ -29,10 +35,17 @@ class GameController extends ChangeNotifier {
   int shakeId = -1;
   int shakeSeq = 0;
 
+  /// Daily garden bookkeeping.
+  bool isDaily = false;
+  String dailyDate = '';
+
   final ValueNotifier<String?> toast = ValueNotifier<String?>(null);
   final ValueNotifier<int> clockTick = ValueNotifier<int>(0);
   Timer? _toastTimer;
   Timer? _clock;
+  Timer? _watchdog;
+  DateTime? _busySince;
+  int _watchdogRecoveries = 0;
 
   bool _disposed = false;
 
@@ -46,14 +59,46 @@ class GameController extends ChangeNotifier {
   bool get canUndo => engine.undoStack.isNotEmpty && !busy;
   bool get needShuffle => engine.needShuffle;
   String get layoutName => kLayouts[engine.layoutIndex].name;
+  int get watchdogRecoveries => _watchdogRecoveries;
+
+  Difficulty get _difficulty =>
+      Difficulty.values[prefs.difficultyIdx.clamp(0, 2)];
 
   // ---- lifecycle ----------------------------------------------------------
-  void newGame(int layoutIndex) {
-    engine = TileSolitaireEngine.newGame(layoutIndex: layoutIndex);
+  void newGame(int layoutIndex,
+      {Difficulty? difficulty, int? seed, bool daily = false}) {
+    final diff = difficulty ?? _difficulty;
+    engine = TileSolitaireEngine.newGame(
+      layoutIndex: layoutIndex,
+      difficulty: diff,
+      seed: seed,
+      // Pro gardeners rake with a fuller toolkit.
+      hintBonus: prefs.pro ? 2 : 0,
+      shuffleBonus: prefs.pro ? 2 : 0,
+    );
+    isDaily = daily;
+    dailyDate = daily ? todayKey() : '';
     _resetRoundState();
     audio.playSfx('start');
     unawaited(audio.startGameMusic());
     _persist();
+  }
+
+  /// Daily garden: one shared layout+seed per calendar day.
+  void newDaily() {
+    final now = DateTime.now();
+    final dayOfYear =
+        now.difference(DateTime(now.year, 1, 1)).inDays;
+    final seed = now.year * 1000 + dayOfYear;
+    final layout = dayOfYear % kLayouts.length;
+    newGame(layout, seed: seed, daily: true);
+  }
+
+  static String todayKey() {
+    final n = DateTime.now();
+    return '${n.year.toString().padLeft(4, '0')}-'
+        '${n.month.toString().padLeft(2, '0')}-'
+        '${n.day.toString().padLeft(2, '0')}';
   }
 
   void restore(String json) {
@@ -66,6 +111,8 @@ class GameController extends ChangeNotifier {
   void _resetRoundState() {
     phase = PlayPhase.playing;
     busy = false;
+    shuffling = false;
+    _busySince = null;
     popping = {};
     hintIds = [];
     toast.value = null;
@@ -78,7 +125,37 @@ class GameController extends ChangeNotifier {
         if (engine.elapsedSeconds % 15 == 0) _persist();
       }
     });
+    _watchdog?.cancel();
+    _watchdog = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_disposed) return;
+      _runWatchdog();
+    });
     notifyListeners();
+  }
+
+  /// Watchdog: if the input lock has been held for more than 2.5 seconds
+  /// without a live resolution path, release it and tell the player.
+  /// This can only trigger if an animation callback was lost; normal play
+  /// never trips it.
+  void _runWatchdog() {
+    if (!busy || phase != PlayPhase.playing) return;
+    final since = _busySince;
+    if (since == null) {
+      _busySince = DateTime.now();
+      return;
+    }
+    if (DateTime.now().difference(since) >
+        const Duration(milliseconds: 2500)) {
+      busy = false;
+      shuffling = false;
+      popping = {};
+      _busySince = null;
+      _watchdogRecoveries++;
+      _showToast('The garden steadied itself — carry on.');
+      engine.checkDeadlock();
+      _afterResolution();
+      notifyListeners();
+    }
   }
 
   void _persist() {
@@ -113,11 +190,13 @@ class GameController extends ChangeNotifier {
         unawaited(audio.playSfx('match'));
         hintIds = [];
         busy = true;
+        _busySince = DateTime.now();
         popping = {rec.aId, rec.bId};
         Future.delayed(const Duration(milliseconds: 260), () {
           if (_disposed) return;
           popping = {};
           busy = false;
+          _busySince = null;
           engine.checkDeadlock();
           _afterResolution();
           notifyListeners();
@@ -153,13 +232,17 @@ class GameController extends ChangeNotifier {
       return;
     }
     busy = true;
+    shuffling = true;
+    _busySince = DateTime.now();
     unawaited(audio.playSfx('shuffle'));
     _showToast('Raking the sand...');
     notifyListeners();
-    Future.delayed(const Duration(milliseconds: 450), () {
+    Future.delayed(const Duration(milliseconds: 700), () {
       if (_disposed) return;
       engine.useShuffle();
       busy = false;
+      shuffling = false;
+      _busySince = null;
       hintIds = [];
       _afterResolution();
       notifyListeners();
@@ -202,7 +285,36 @@ class GameController extends ChangeNotifier {
       prefs.bestTimeSec = engine.elapsedSeconds;
       record = true;
     }
-    if (record) unawaited(prefs.saveRecords());
+    // Per-layout progress.
+    final li = engine.layoutIndex;
+    final prevBest = prefs.layoutBest[li] ?? 0;
+    if (engine.score > prevBest) {
+      prefs.layoutBest[li] = engine.score;
+      record = true;
+    }
+    prefs.layoutsCleared.add(li);
+    // Daily garden records + streak.
+    if (isDaily && dailyDate.isNotEmpty) {
+      final prev = prefs.dailyBest[dailyDate] ?? 0;
+      if (engine.score > prev) {
+        prefs.dailyBest[dailyDate] = engine.score;
+        record = true;
+      }
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      final yKey = '${yesterday.year.toString().padLeft(4, '0')}-'
+          '${yesterday.month.toString().padLeft(2, '0')}-'
+          '${yesterday.day.toString().padLeft(2, '0')}';
+      if (prefs.lastDailyDate == yKey) {
+        prefs.dailyStreak++;
+      } else if (prefs.lastDailyDate != dailyDate) {
+        prefs.dailyStreak = 1;
+      }
+      prefs.lastDailyDate = dailyDate;
+    }
+    if (record) {
+      unawaited(prefs.saveRecords());
+    }
+    unawaited(prefs.saveProgress());
     unawaited(prefs.clearGame());
     notifyListeners();
   }
@@ -231,17 +343,20 @@ class GameController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Auto-pause when the app goes to the background (timer stops, state saved).
+  /// Auto-pause when the app goes to the background (timer stops, state
+  /// saved, music paused).
   void autoPause() {
     if (phase == PlayPhase.playing) {
       phase = PlayPhase.paused;
       _persist();
+      unawaited(audio.pauseMusic());
       notifyListeners();
     }
   }
 
   void restart() {
-    newGame(engine.layoutIndex);
+    newGame(engine.layoutIndex,
+        difficulty: engine.difficulty, daily: isDaily);
   }
 
   /// Quitting mid-game counts as a loss (score kept as-is).
@@ -266,6 +381,7 @@ class GameController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _clock?.cancel();
+    _watchdog?.cancel();
     _toastTimer?.cancel();
     toast.dispose();
     clockTick.dispose();

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../game/controller.dart';
 import '../game/engine.dart';
+import '../theme/face_styles.dart';
 import '../ui/zen.dart';
 import 'game_over_screen.dart';
 import 'settings_screen.dart';
@@ -46,9 +47,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.hidden) {
-      c.autoPause(); // timer stops, state persisted
+      c.autoPause(); // timer stops, state persisted, music paused
     } else if (state == AppLifecycleState.resumed) {
-      c.audio.refreshMusic();
+      c.audio.resumeMusic();
     }
   }
 
@@ -66,7 +67,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               onPlayAgain: () {
                 final next = GameController(
                     audio: c.audio, prefs: c.prefs)
-                  ..newGame(c.engine.layoutIndex);
+                  ..newGame(c.engine.layoutIndex,
+                      difficulty: c.engine.difficulty,
+                      daily: c.isDaily);
                 c.dispose();
                 navigator.pushReplacement(
                   MaterialPageRoute(
@@ -134,10 +137,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             onTap: c.pause,
           ),
           Expanded(
-            child: Text(
-              '${c.layoutName} garden',
-              style: Zen.heading(19),
-              textAlign: TextAlign.center,
+            child: Column(
+              children: [
+                Text(
+                  c.isDaily ? 'Daily garden' : '${c.layoutName} garden',
+                  style: Zen.heading(19),
+                  textAlign: TextAlign.center,
+                ),
+                Text(
+                  c.engine.difficulty.title,
+                  style: Zen.chipLabel.copyWith(fontSize: 10),
+                ),
+              ],
             ),
           ),
           PebbleButton(
@@ -219,20 +230,37 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Widget _tileCell(Tile tile, double tw, TileSolitaireEngine engine) {
     final popping = c.popping.contains(tile.id);
     final playable = engine.isFree(tile);
-    final face = kFaces[tile.face];
+    final glyph = FaceStyles.current.faces[tile.face];
     Widget cell = GestureDetector(
       onTap: () => c.tap(tile.id),
       child: BambooTile(
-        glyph: face.glyph,
+        glyph: glyph.glyph,
         size: tw,
         selected: engine.selectedId == tile.id,
         hinted: c.hintIds.contains(tile.id),
         covered: engine.isCovered(tile),
         dimmed: !playable && !popping,
         lift: engine.selectedId == tile.id ? 4 : tile.z * 1.5,
-        semanticsLabel: '${face.label} tile${playable ? ', free' : ''}',
+        semanticsLabel: '${glyph.label} tile${playable ? ', free' : ''}',
       ),
     );
+
+    // Hinted tiles breathe gently until tapped (the natural moss rim).
+    if (c.hintIds.contains(tile.id) && !popping) {
+      cell = _HintPulse(
+        key: ValueKey('hint${c.hintFlashSeq}_${tile.id}'),
+        child: cell,
+      );
+    }
+
+    // During a shuffle every tile trembles as the sand is raked.
+    if (c.shuffling && !popping) {
+      cell = _ShuffleJitter(
+        key: ValueKey('shuf${tile.id}'),
+        seed: tile.id * 7919,
+        child: cell,
+      );
+    }
 
     if (popping) {
       // Lift and fade to mist.
@@ -265,7 +293,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
                 'No pairs left. Rake the sand to begin anew.',
                 style: TextStyle(
@@ -327,7 +355,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       margin: const EdgeInsets.symmetric(horizontal: 14),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Zen.cedar,
+        color: Zen.tray,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Zen.darkCedar, width: 1.5),
         boxShadow: [
@@ -339,7 +367,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         ],
       ),
       child: faces.isEmpty
-          ? const Center(
+          ? Center(
               child: Text(
                 'Captured pairs rest here',
                 style: TextStyle(
@@ -352,13 +380,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               scrollDirection: Axis.horizontal,
               itemCount: faces.length,
               separatorBuilder: (_, _) => const SizedBox(width: 5),
-              itemBuilder: (context, i) => Center(
-                child: BambooTile(
-                  glyph: kFaces[faces[i]].glyph,
-                  size: 24,
-                  semanticsLabel: kFaces[faces[i]].label,
-                ),
-              ),
+              itemBuilder: (context, i) {
+                final g = FaceStyles.current.faces[faces[i]];
+                return Center(
+                  child: BambooTile(
+                    glyph: g.glyph,
+                    size: 24,
+                    semanticsLabel: g.label,
+                  ),
+                );
+              },
             ),
     );
   }
@@ -375,7 +406,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               children: [
                 Text('Paused', style: Zen.heading(28)),
                 const SizedBox(height: 6),
-                const Text('The garden waits for you.',
+                Text('The garden waits for you.',
                     style: Zen.body),
                 const SizedBox(height: 18),
                 PebbleButton(
@@ -413,7 +444,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     c.resign();
                     Navigator.of(context).pop();
                   },
-                  child: const Text(
+                  child: Text(
                     'Leave garden',
                     style: TextStyle(
                         color: Zen.darkCedar,
@@ -466,6 +497,79 @@ class _ShakeOnceState extends State<_ShakeOnce>
         return Transform.translate(offset: Offset(dx, 0), child: child);
       },
       child: widget.child,
+    );
+  }
+}
+
+/// Gentle breathing pulse around hinted tiles (moss rim, no glow).
+class _HintPulse extends StatefulWidget {
+  const _HintPulse({super.key, required this.child});
+  final Widget child;
+
+  @override
+  State<_HintPulse> createState() => _HintPulseState();
+}
+
+class _HintPulseState extends State<_HintPulse>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ac;
+
+  @override
+  void initState() {
+    super.initState();
+    _ac = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ac.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ac,
+      builder: (context, child) {
+        final v = _ac.value;
+        return Transform.scale(
+          scale: 1 + 0.05 * v,
+          child: Transform.translate(
+            offset: Offset(0, -3 * v),
+            child: child,
+          ),
+        );
+      },
+      child: widget.child,
+    );
+  }
+}
+
+/// Tiles tremble while the sand is being raked (shuffle animation).
+class _ShuffleJitter extends StatelessWidget {
+  const _ShuffleJitter({super.key, required this.child, required this.seed});
+  final Widget child;
+  final int seed;
+
+  @override
+  Widget build(BuildContext context) {
+    final rng = Random(seed);
+    final dx = (rng.nextDouble() - 0.5) * 14;
+    final dy = (rng.nextDouble() - 0.5) * 10;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 700),
+      builder: (context, v, child) {
+        final w = sin(v * pi * 4);
+        return Transform.translate(
+          offset: Offset(dx * w * (1 - v), dy * w * (1 - v)),
+          child: child,
+        );
+      },
+      child: child,
     );
   }
 }

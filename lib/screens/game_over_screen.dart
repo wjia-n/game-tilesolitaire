@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 
 import '../game/controller.dart';
+import '../game/engine.dart';
 import '../ui/zen.dart';
 
 class GameOverScreen extends StatelessWidget {
@@ -44,6 +45,12 @@ class GameOverScreen extends StatelessWidget {
                     style: Zen.body,
                     textAlign: TextAlign.center,
                   ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${controller.prefs.playerName} · ${controller.isDaily ? 'Daily garden' : '${controller.layoutName} · ${e.difficulty.title}'}',
+                    style: Zen.chipLabel,
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 18),
                   CedarPlaque(
                     child: Column(
@@ -69,7 +76,7 @@ class GameOverScreen extends StatelessWidget {
                           const SizedBox(height: 10),
                           Text(
                             'Time bonus +${e.winBonus}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Zen.deepMoss,
                               fontWeight: FontWeight.w700,
                               fontSize: 13,
@@ -80,7 +87,7 @@ class GameOverScreen extends StatelessWidget {
                             controller.prefs.bestScore > 0 &&
                             e.score >= controller.prefs.bestScore) ...[
                           const SizedBox(height: 6),
-                          const Text(
+                          Text(
                             'A new best score.',
                             style: TextStyle(
                               color: Zen.cedar,

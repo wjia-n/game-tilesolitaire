@@ -104,6 +104,17 @@ class _MenuScreenState extends State<MenuScreen> with WidgetsBindingObserver {
   void _editName() {
     widget.audio.playSfx('tap');
     final ctl = TextEditingController(text: prefs.playerName);
+    // Commit on Save OR keyboard-done (both must persist the rename).
+    void commit() {
+      final name = ctl.text.trim();
+      if (name.isNotEmpty) {
+        prefs.playerName = name;
+        prefs.saveProfile();
+      }
+      widget.audio.playSfx('tap');
+      Navigator.of(context).pop();
+      setState(() {});
+    }
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -112,6 +123,8 @@ class _MenuScreenState extends State<MenuScreen> with WidgetsBindingObserver {
         content: TextField(
           controller: ctl,
           maxLength: 18,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => commit(),
           decoration: const InputDecoration(
             hintText: 'What shall the garden call you?',
           ),
@@ -122,16 +135,7 @@ class _MenuScreenState extends State<MenuScreen> with WidgetsBindingObserver {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              final name = ctl.text.trim();
-              if (name.isNotEmpty) {
-                prefs.playerName = name;
-                prefs.saveProfile();
-              }
-              widget.audio.playSfx('tap');
-              Navigator.of(context).pop();
-              setState(() {});
-            },
+            onPressed: commit,
             child: const Text('Save'),
           ),
         ],

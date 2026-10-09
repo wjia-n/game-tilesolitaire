@@ -31,6 +31,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _editName() {
     audio.playSfx('tap');
     final ctl = TextEditingController(text: prefs.playerName);
+    // Commit on Save OR keyboard-done (both must persist the rename).
+    void commit() {
+      final name = ctl.text.trim();
+      if (name.isNotEmpty) {
+        prefs.playerName = name;
+        prefs.saveProfile();
+      }
+      audio.playSfx('tap');
+      Navigator.of(context).pop();
+      setState(() {});
+    }
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -39,6 +50,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         content: TextField(
           controller: ctl,
           maxLength: 18,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => commit(),
           decoration: const InputDecoration(
             hintText: 'What shall the garden call you?',
           ),
@@ -49,16 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              final name = ctl.text.trim();
-              if (name.isNotEmpty) {
-                prefs.playerName = name;
-                prefs.saveProfile();
-              }
-              audio.playSfx('tap');
-              Navigator.of(context).pop();
-              setState(() {});
-            },
+            onPressed: commit,
             child: const Text('Save'),
           ),
         ],
